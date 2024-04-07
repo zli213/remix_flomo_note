@@ -5,6 +5,13 @@ import {
   Scripts,
   ScrollRestoration,
 } from "@remix-run/react";
+import type { LinksFunction } from "@remix-run/node";
+import stylesUrl from "./main.css?url";
+import { NextUIProvider } from "@nextui-org/react";
+
+export const links: LinksFunction = () => [
+  { rel: "stylesheet", href: stylesUrl },
+];
 
 export function Layout({ children }: { children: React.ReactNode }) {
   return (
@@ -25,5 +32,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
 }
 
 export default function App() {
-  return <Outlet />;
+  return (
+    <NextUIProvider>
+      <Outlet />
+    </NextUIProvider>
+  );
 }
