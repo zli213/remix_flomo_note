@@ -2,7 +2,6 @@ import {
   Button,
   Card,
   CardBody,
-  CardFooter,
   CardHeader,
   Textarea,
 } from "@nextui-org/react";
@@ -15,7 +14,7 @@ import {
 } from "@remix-run/react";
 import { prisma } from "~/prisma.server";
 import dayjs from "dayjs";
-import { useState, useEffect, useRef, useTransition } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Note } from "@prisma/client";
 import { Listbox, ListboxItem } from "@nextui-org/react";
 import { ListboxWrapper } from "../ListboxWrapper";
@@ -50,7 +49,6 @@ export default function Page() {
   const notes = loaderData.notes;
   const updateFetcher = useFetcher();
   const deleteFetcher = useFetcher();
-  // transition.type === "actionSubmission"
   const isActionSubmission = navigation.state === "submitting";
   let formRef = useRef<HTMLFormElement | null>(null);
   useEffect(() => {
@@ -97,66 +95,6 @@ export default function Page() {
       </div>
     </div>
   );
-
-  // function NoteCard(props: { note: Note }) {
-  //   // const [isEditing, setIsEditing] = useState(false);
-  //   const fetcher = useFetcher();
-  //   // const deleteFetcher = useFetcher();
-  //   // const isUpdating = fetcher.state === "submitting";
-  //   const isEditing = false;
-  //   console.log("note card");
-  //   return (
-  //     <Card className="p-3">
-  //       <CardHeader className="flex justify-between">
-  //         <div className="text-gray-500 text-sm">
-  //           {dayjs(props.note.createAt).format("YYYY-MM-DD HH:mm:ss")}
-  //         </div>
-  //         <div className="flex flex-col gap-3">
-  //           <Button
-  //             size="sm"
-  //             variant="flat"
-  //             // onClick={(_) => setIsEditing(!isEditing)}
-  //           >
-  //             edit
-  //           </Button>
-  //           {/* <deleteFetcher.Form
-  //             action={`/mine/${props.note.id}/delete`}
-  //             method="post"
-  //           > */}
-  //           <Button type="submit" size="sm" color="danger">
-  //             Delete
-  //           </Button>
-  //           {/* </deleteFetcher.Form> */}
-  //         </div>
-  //       </CardHeader>
-  //       {isEditing ? (
-  //         <>
-  //           <CardBody>
-  //             <fetcher.Form
-  //               action={`/mine/${props.note.id}/edit`}
-  //               method="post"
-  //             >
-  //               <Textarea
-  //                 name="content"
-  //                 minRows={10}
-  //                 placeholder="What you want to write now..."
-  //                 defaultValue={props.note.content}
-  //               />
-  //               <div className="flex gap-3">
-  //                 <Button size="sm">Cancel</Button>
-  //                 <Button type="submit" color="primary" size="sm">
-  //                   Save
-  //                 </Button>
-  //               </div>
-  //             </fetcher.Form>
-  //           </CardBody>
-  //         </>
-  //       ) : (
-  //         <CardBody>{props.note.content}</CardBody>
-  //       )}
-  //     </Card>
-  //   );
-  // }
 }
 const NoteCard = (props: {
   note: Note;
