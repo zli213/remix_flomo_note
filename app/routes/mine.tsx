@@ -20,18 +20,31 @@ import { Listbox, ListboxItem } from "@nextui-org/react";
 import { ListboxWrapper } from "../ListboxWrapper";
 import { BsFillSendFill } from "react-icons/bs";
 import { TbLocationCancel } from "react-icons/tb";
+import { CiMenuFries } from "react-icons/ci";
 
 export const action = async (c: ActionFunctionArgs) => {
   const formData = await c.request.formData();
   const content = formData.get("content") as string;
+  // get all tags start with #
+  const tagReg = new RegExp(/#[^ ]+/g);
+  const tags = content.match(tagReg)?.map((tag) => tag.slice(1));
   if (!content) {
     throw new Response("Content is required", { status: 400 });
   }
   await prisma.note.create({
     data: {
       content,
+      tags: {
+        connectOrCreate: tags?.map((tag) => {
+          return {
+            where: { title: tag },
+            create: { title: tag },
+          };
+        }),
+      },
     },
   });
+
   return json({ message: "Note created" });
 };
 export const loader = async () => {
@@ -158,7 +171,7 @@ const NoteCard = (props: {
                 variant="light"
                 onClick={() => setIsVisiable(!isVisiable)}
               >
-                ...
+                <CiMenuFries className="w-5 h-5" />
               </Button>
             </div>
           </div>
