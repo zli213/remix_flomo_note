@@ -2,6 +2,9 @@ import { createCookieSessionStorage } from "@remix-run/node"; // or cloudflare/d
 
 type SessionData = {
   userId: string;
+  username: string;
+  email: string;
+  avatar: string;
 };
 
 type SessionFlashData = {
@@ -28,5 +31,11 @@ export const auth = async (requesst: Request) => {
   const session = await userSessionStorage.getSession(
     requesst.headers.get("Cookie")
   );
-  return session.get("userId");
+
+  return {
+    userId: session.get("userId"),
+    username: session.get("username"),
+    email: session.get("email"),
+    avatar: session.get("avatar"),
+  };
 };

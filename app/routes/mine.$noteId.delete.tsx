@@ -8,6 +8,5 @@ export const action = async (c: ActionFunctionArgs) => {
       id: noteId,
     },
   });
-  console.log("delete");
   return json({ message: "Note deleted" });
 };

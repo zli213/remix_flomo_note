@@ -1,7 +1,6 @@
 import { Button, Input, Image } from "@nextui-org/react";
 import { Form, useActionData } from "@remix-run/react";
-
-import React, { useState } from "react";
+import { useState } from "react";
 import { TbEyeFilled } from "react-icons/tb";
 import { FaEyeSlash } from "react-icons/fa";
 import { ActionFunctionArgs, json } from "@remix-run/node";
@@ -9,14 +8,15 @@ import { prisma } from "~/prisma.server";
 import { redirect } from "react-router";
 export const action = async (c: ActionFunctionArgs) => {
   const formData = await c.request.formData();
-  const username = formData.get("username") as string;
+  const email = formData.get("email") as string;
+  const username = email.split("@")[0];
   const password = formData.get("password") as string;
-  console.log({ password });
-  if (!username) {
+  const avatar = `https://api.dicebear.com/8.x/shapes/svg?seed=Felix=${username}`;
+  if (!email) {
     return json({
       successs: false,
       errors: {
-        username: "Username is required",
+        username: "Email is required",
         password: "",
       },
     });
@@ -41,8 +41,10 @@ export const action = async (c: ActionFunctionArgs) => {
   }
   await prisma.user.create({
     data: {
-      username,
-      password,
+      username: username,
+      email: email,
+      password: password,
+      avatarUrl: avatar,
     },
   });
   return redirect("/login");
@@ -70,7 +72,7 @@ export default function App() {
           <div className="flex flex-col gap-4 items-center">
             <Input
               label="email"
-              name="username"
+              name="email"
               type="email"
               isInvalid={!!errors?.username}
               errorMessage={errors?.username}

@@ -7,16 +7,17 @@ import { FaEyeSlash } from "react-icons/fa";
 import { ActionFunctionArgs, json } from "@remix-run/node";
 import { prisma } from "~/prisma.server";
 import { userSessionStorage } from "~/session";
+
 export const action = async (c: ActionFunctionArgs) => {
   const formData = await c.request.formData();
-  const username = formData.get("username") as string;
+  const email = formData.get("email") as string;
   const password = formData.get("password") as string;
   const session = await userSessionStorage.getSession(
     c.request.headers.get("Cookie")
   );
   const user = await prisma.user.findUnique({
     where: {
-      username,
+      email,
     },
   });
   if (!user) {
@@ -34,6 +35,9 @@ export const action = async (c: ActionFunctionArgs) => {
     });
   }
   session.set("userId", user.id);
+  session.set("username", user.username);
+  session.set("email", user.email);
+  session.set("avatar", user.avatarUrl ?? "");
   return redirect("/mine", {
     headers: {
       "Set-Cookie": await userSessionStorage.commitSession(session),
@@ -61,7 +65,7 @@ export default function App() {
       <div className="flex justify-start items-center w-4/12">
         <Form method="post" className="w-full max-w-md">
           <div className="flex flex-col gap-4 items-center">
-            <Input isRequired label="email" name="username" type="email" />
+            <Input isRequired label="email" name="email" type="email" />
             <Input
               label="Password"
               variant="bordered"
