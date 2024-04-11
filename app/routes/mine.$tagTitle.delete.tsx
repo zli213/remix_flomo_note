@@ -10,7 +10,9 @@ export const action = async (c: ActionFunctionArgs) => {
         where: {
           tags: {
             some: {
-              title: tagTitle,
+              tag: {
+                title: tagTitle,
+              },
             },
           },
         },

@@ -9,7 +9,12 @@ import {
   DropdownTrigger,
   Textarea,
 } from "@nextui-org/react";
-import { ActionFunctionArgs, LoaderFunctionArgs, json } from "@remix-run/node";
+import {
+  ActionFunctionArgs,
+  LoaderFunctionArgs,
+  json,
+  redirect,
+} from "@remix-run/node";
 import {
   Form,
   Link,
@@ -22,7 +27,7 @@ import { prisma } from "~/prisma.server";
 import dayjs from "dayjs";
 import { useState, useEffect, useRef } from "react";
 import { Note } from "@prisma/client";
-import { Listbox, ListboxItem } from "@nextui-org/react";
+import { Listbox, ListboxItem, User } from "@nextui-org/react";
 import { ListboxWrapper } from "../ListboxWrapper";
 import { BsFillSendFill } from "react-icons/bs";
 import { TbLocationCancel } from "react-icons/tb";
@@ -30,10 +35,12 @@ import { CiMenuFries } from "react-icons/ci";
 import { FaNoteSticky } from "react-icons/fa6";
 import { IoIosArrowDown, IoIosArrowUp } from "react-icons/io";
 import { HiHashtag } from "react-icons/hi";
+import { auth } from "~/session";
 
 export const action = async (c: ActionFunctionArgs) => {
   const formData = await c.request.formData();
   const content = formData.get("content") as string;
+  const userId = formData.get("userId") as string;
   // get all tags start with #
   const tagReg = new RegExp(/(#[\p{L}\p{N}_-]+(?:\/[\p{L}\p{N}_-]+)*)/gu);
   const tags = content.match(tagReg)?.map((tag) => tag.slice(1));
@@ -45,54 +52,103 @@ export const action = async (c: ActionFunctionArgs) => {
   // Remove duplicate tags
   const uniqueTags = [...new Set(tagMatches.map((tag) => tag.slice(1)))];
 
-  // Create a note and process tags at the same time
-  await prisma.note.create({
+  const note = await prisma.note.create({
     data: {
       content,
-      tags: {
-        connectOrCreate: uniqueTags?.map((tag) => ({
-          where: { title: tag },
-          create: { title: tag },
-        })),
+      user: {
+        connect: {
+          id: userId,
+        },
       },
     },
   });
 
+  // For each unique tag, connect or create a Tag
+  for (const title of uniqueTags) {
+    const tag = await prisma.tag.upsert({
+      where: { title },
+      create: { title },
+      update: {},
+    });
+
+    // For each Tag, create a NoteTag to establish the relationship with the Note
+    await prisma.noteTag.create({
+      data: {
+        noteId: note.id,
+        tagTitle: tag.title,
+      },
+    });
+  }
+
   return json({ message: "Note created" });
 };
 export const loader = async (c: LoaderFunctionArgs) => {
+  const userInfo = await auth(c.request);
+  const userId = userInfo.userId;
+  if (!userId) {
+    return redirect("/login");
+  }
+
   const searchParams = new URL(c.request.url).searchParams;
   const tag = searchParams.get("tag") as string;
   const tagConditions = tag
     ? {
         tags: {
           some: {
-            title: tag,
+            tag: {
+              title: tag,
+            },
           },
         },
       }
     : {};
-  const [notes, tags] = await prisma.$transaction([
+
+  const notes = await prisma.$transaction([
     prisma.note.findMany({
       where: {
+        userId,
         ...tagConditions,
       },
       orderBy: {
-        createAt: "desc",
+        createdAt: "desc",
+      },
+      include: {
+        tags: {
+          include: {
+            tag: true,
+          },
+        },
       },
     }),
-    prisma.tag.findMany(),
   ]);
-  return json({ notes, tags });
+
+  const tagsArray = await prisma.noteTag.findMany({
+    where: {
+      note: {
+        userId: userId,
+      },
+    },
+    select: {
+      tag: true,
+    },
+    distinct: ["tagTitle"],
+  });
+
+  return json({ notes, tagsArray, userInfo, tag });
 };
 
 export default function Page() {
   const loaderData = useLoaderData<typeof loader>();
   const navigation = useNavigation();
   const notes = loaderData.notes;
+  const userId = loaderData.userInfo.userId;
+  const avatar = loaderData.userInfo.avatar;
+  const username = loaderData.userInfo.username;
+  const email = loaderData.userInfo.email;
   const updateFetcher = useFetcher();
   const deleteFetcher = useFetcher();
   const deleteTagFetcher = useFetcher();
+  const logoutFetcher = useFetcher();
   const isActionSubmission = navigation.state === "submitting";
   const [searchParams, setSearchParams] = useSearchParams();
   const [isTagListVisiable, setIsTagListVisiable] = useState(true);
@@ -109,10 +165,53 @@ export default function Page() {
       { method: "post", action: `/mine/${tagTitle}/delete` }
     );
   };
+  // log out
+  const handleLogout = () => {
+    logoutFetcher.submit(
+      {},
+      {
+        method: "post",
+        action: "/logout",
+      }
+    );
+  };
   return (
     <div className="p-10">
       <div className="flex gap-3">
-        <div className="w-1/5">
+        <div className="w-1/5 mr-3">
+          <div className="flex flex-row justify-between items-center py-4">
+            <User
+              name={username}
+              description={email}
+              avatarProps={{
+                src: `${avatar}`,
+              }}
+            />
+            <Dropdown>
+              <DropdownTrigger>
+                <Button
+                  size="sm"
+                  variant="light"
+                  className="p-0"
+                  radius="none"
+                  isIconOnly
+                >
+                  <CiMenuFries className="w-5 h-5" />
+                </Button>
+              </DropdownTrigger>
+              <DropdownMenu aria-label="Static Actions">
+                <DropdownItem key="edit">Account Profile</DropdownItem>
+                <DropdownItem
+                  key="delete"
+                  className="text-danger"
+                  color="danger"
+                  onClick={() => handleLogout()}
+                >
+                  Log out
+                </DropdownItem>
+              </DropdownMenu>
+            </Dropdown>
+          </div>
           <div>
             <Button
               variant="flat"
@@ -122,7 +221,7 @@ export default function Page() {
               <FaNoteSticky />
               All
             </Button>
-            <div className="text-yellow-500 flex flex-row ml-3">
+            <div className="text-yellow-500 flex flex-row ml-3 py-3">
               <h1>Tags</h1>
               <button onClick={(_) => setIsTagListVisiable(!isTagListVisiable)}>
                 {isTagListVisiable ? <IoIosArrowDown /> : <IoIosArrowUp />}
@@ -130,22 +229,24 @@ export default function Page() {
             </div>
             {isTagListVisiable && (
               <div className="flex flex-col gap-1">
-                {loaderData.tags.map((tag) => (
+                {loaderData.tagsArray.map((tag) => (
                   <div
-                    key={tag.title}
+                    key={tag.tag.title}
                     className={`flex justify-between gap-3 ${
-                      tag.title === searchParams.get("tag") ? "bg-blue-500" : ""
-                    }`}
+                      tag.tag.title === searchParams.get("tag")
+                        ? "bg-blue-500"
+                        : ""
+                    } items-center`}
                   >
                     <Button
                       className="w-full flex justify-start"
                       variant="light"
-                      onClick={(_) => setSearchParams({ tag: tag.title })}
+                      onClick={(_) => setSearchParams({ tag: tag.tag.title })}
                       radius="none"
                     >
                       <div className="flex flex-row items-center">
                         <HiHashtag />
-                        {tag.title}
+                        {tag.tag.title}
                       </div>
                     </Button>
                     <Dropdown>
@@ -166,7 +267,7 @@ export default function Page() {
                           key="delete"
                           className="text-danger"
                           color="danger"
-                          onClick={() => hanleDeleteTag(tag.title)}
+                          onClick={() => hanleDeleteTag(tag.tag.title)}
                         >
                           Delete
                         </DropdownItem>
@@ -181,6 +282,7 @@ export default function Page() {
         <div className="flex-1 flex-col">
           <Form method="post" ref={formRef}>
             <div className="flex flex-col gap-3 my-3">
+              <input type="hidden" name="userId" value={userId} />
               <Textarea
                 name="content"
                 minRows={10}
@@ -195,11 +297,11 @@ export default function Page() {
             <Card>
               <CardHeader>Notes</CardHeader>
               <CardBody>
-                {notes.map((note) => (
+                {notes[0].map((note) => (
                   <NoteCard
                     note={{
                       ...note,
-                      createAt: new Date(note.createAt),
+                      createdAt: new Date(note.createdAt),
                     }}
                     updateFetcher={updateFetcher}
                     deleteFetcher={deleteFetcher}
@@ -289,7 +391,7 @@ const NoteCard = (props: {
       <Card className="p-3">
         <CardHeader className="flex justify-between">
           <div className="text-gray-500 text-sm">
-            {dayjs(props.note.createAt).format("YYYY-MM-DD HH:mm:ss")}
+            {dayjs(props.note.createdAt).format("YYYY-MM-DD HH:mm:ss")}
           </div>
           <div>
             <div className="flex flex-col gap-3">

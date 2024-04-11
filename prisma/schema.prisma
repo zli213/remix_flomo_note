@@ -12,20 +12,35 @@ datasource db {
   provider = "sqlite"
   url = "file: .. /database.db"
 }
+model Note {
+  id        String   @id @default(uuid())
+  content   String
+  createdAt DateTime @default(now()) @map("create_at")
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  tags      NoteTag[] // Define the relation to NoteTag instead of Tag directly
+}
 
- model Note {
-  id String @id @default(uuid())
-  content String
-  createAt DateTime @default(now()) @map("create_at") 
-  tags Tag[]
-}
 model Tag {
-  title String @id
-  notes Note[]
+  title String   @id
+  notes NoteTag[] // Define the relation to NoteTag instead of Note directly
 }
+
 model User {
-  id String @id @default(uuid())
-  username String
-  password String
-  createAt DateTime @default(now()) @map("create_at") 
+  id        String   @id @default(uuid())
+  username  String   @unique
+  email     String   @unique
+  avatarUrl String?
+  password  String
+  createdAt DateTime @default(now()) @map("create_at")
+  notes     Note[]
+}
+
+model NoteTag {
+  noteId String
+  tagTitle String
+  note Note @relation(fields: [noteId], references: [id])
+  tag Tag @relation(fields: [tagTitle], references: [title])
+
+  @@id([noteId, tagTitle])
 }
