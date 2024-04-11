@@ -9,7 +9,12 @@ import {
   DropdownTrigger,
   Textarea,
 } from "@nextui-org/react";
-import { ActionFunctionArgs, LoaderFunctionArgs, json } from "@remix-run/node";
+import {
+  ActionFunctionArgs,
+  LoaderFunctionArgs,
+  json,
+  redirect,
+} from "@remix-run/node";
 import {
   Form,
   Link,
@@ -30,6 +35,7 @@ import { CiMenuFries } from "react-icons/ci";
 import { FaNoteSticky } from "react-icons/fa6";
 import { IoIosArrowDown, IoIosArrowUp } from "react-icons/io";
 import { HiHashtag } from "react-icons/hi";
+import { auth } from "~/session";
 
 export const action = async (c: ActionFunctionArgs) => {
   const formData = await c.request.formData();
@@ -61,6 +67,10 @@ export const action = async (c: ActionFunctionArgs) => {
   return json({ message: "Note created" });
 };
 export const loader = async (c: LoaderFunctionArgs) => {
+  const userId = await auth(c.request);
+  if (!userId) {
+    return redirect("/login");
+  }
   const searchParams = new URL(c.request.url).searchParams;
   const tag = searchParams.get("tag") as string;
   const tagConditions = tag
@@ -83,7 +93,7 @@ export const loader = async (c: LoaderFunctionArgs) => {
     }),
     prisma.tag.findMany(),
   ]);
-  return json({ notes, tags });
+  return json({ notes, tags, userId });
 };
 
 export default function Page() {
@@ -113,6 +123,9 @@ export default function Page() {
     <div className="p-10">
       <div className="flex gap-3">
         <div className="w-1/5">
+          <div>
+            <b>User ID:</b> {loaderData.userId}
+          </div>
           <div>
             <Button
               variant="flat"

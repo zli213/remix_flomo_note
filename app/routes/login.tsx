@@ -1,87 +1,72 @@
 import { Button, Input, Image } from "@nextui-org/react";
-import { Form, useActionData } from "@remix-run/react";
+import { Form, redirect } from "@remix-run/react";
 
 import React, { useState } from "react";
 import { TbEyeFilled } from "react-icons/tb";
 import { FaEyeSlash } from "react-icons/fa";
 import { ActionFunctionArgs, json } from "@remix-run/node";
 import { prisma } from "~/prisma.server";
-import { redirect } from "react-router";
+import { userSessionStorage } from "~/session";
 export const action = async (c: ActionFunctionArgs) => {
   const formData = await c.request.formData();
   const username = formData.get("username") as string;
   const password = formData.get("password") as string;
-  console.log({ password });
-  if (!username) {
-    return json({
-      successs: false,
-      errors: {
-        username: "Username is required",
-        password: "",
-      },
-    });
-  }
-  if (!password) {
-    return json({
-      successs: false,
-      errors: {
-        username: "",
-        password: "Password is required",
-      },
-    });
-  }
-  if (password.length < 8) {
-    return json({
-      successs: false,
-      errors: {
-        username: "",
-        password: "Password must be at least 8 characters",
-      },
-    });
-  }
-  await prisma.user.create({
-    data: {
+  const session = await userSessionStorage.getSession(
+    c.request.headers.get("Cookie")
+  );
+  const user = await prisma.user.findUnique({
+    where: {
       username,
-      password,
     },
   });
-  return redirect("/login");
+  if (!user) {
+    throw new Response("Invalid username or password", {
+      status: 400,
+    });
+  }
+  if (user.password !== password) {
+    return json({
+      success: false,
+      errors: {
+        username: "",
+        password: "Invalid password",
+      },
+    });
+  }
+  session.set("userId", user.id);
+  return redirect("/mine", {
+    headers: {
+      "Set-Cookie": await userSessionStorage.commitSession(session),
+    },
+  });
 };
 
 export default function App() {
   const [isVisible, setIsVisible] = useState(false);
+
   const toggleVisibility = () => setIsVisible(!isVisible);
-  const actionData = useActionData<typeof action>();
-  const errors = actionData?.errors;
+
   return (
-    <div className="flex flex-row justify-center items-center px-4 py-5 w-full min-h-screen gap-3">
+    <div className="flex flex-row justify-center items-center px-4 py-5 w-full min-h-screen">
       {/* Image Container */}
-      <div className="flex justify-center items-start w-2/12">
+      <div className="flex justify-center items-center w-2/12">
         <Image
           isZoomed
           width={480}
           alt="Notes Image with Zoom"
-          src="/signup.svg"
+          src="/login.svg"
         />
       </div>
       {/* Form Container */}
-      <div className="flex justify-center items-center w-4/12">
+      <div className="flex justify-start items-center w-4/12">
         <Form method="post" className="w-full max-w-md">
           <div className="flex flex-col gap-4 items-center">
-            <Input
-              label="email"
-              name="username"
-              type="email"
-              isInvalid={!!errors?.username}
-              errorMessage={errors?.username}
-            />
+            <Input isRequired label="email" name="username" type="email" />
             <Input
               label="Password"
               variant="bordered"
-              name="password"
               placeholder="Enter your password"
-              isInvalid={!!errors?.password}
-              errorMessage={errors?.password}
+              name="password"
               endContent={
                 <button
                   className="focus:outline-none"
@@ -98,12 +83,12 @@ export default function App() {
               type={isVisible ? "text" : "password"}
             />
             <Button color="primary" type="submit" className="max-w-xs">
-              Sign up
+              Login
             </Button>
             <p>
-              If you have an account, please{" "}
-              <a href="/login" className="text-blue-500">
-                login
+              If you have no account, please{" "}
+              <a href="/signup" className="text-blue-500">
+                sign up
               </a>
               .
             </p>
