@@ -1,6 +1,5 @@
-import React from "react";
 import { Image } from "@nextui-org/react";
-export const AcmeLogo = () => (
+export const Logo = () => (
   <Image
     width={36}
     alt="NextUI hero Image"

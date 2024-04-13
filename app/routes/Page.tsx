@@ -10,19 +10,12 @@ import {
   Textarea,
 } from "@nextui-org/react";
 import {
-  ActionFunctionArgs,
-  LoaderFunctionArgs,
-  json,
-  redirect,
-} from "@remix-run/node";
-import {
   Form,
   useFetcher,
   useLoaderData,
   useNavigation,
   useSearchParams,
 } from "@remix-run/react";
-import { prisma } from "~/prisma.server";
 import { useState, useEffect, useRef } from "react";
 import { User } from "@nextui-org/react";
 import { BsFillSendFill } from "react-icons/bs";
@@ -30,109 +23,8 @@ import { CiMenuFries } from "react-icons/ci";
 import { FaNoteSticky } from "react-icons/fa6";
 import { IoIosArrowDown, IoIosArrowUp } from "react-icons/io";
 import { HiHashtag } from "react-icons/hi";
-import { auth } from "~/session";
 import { NoteCard } from "~/components/noteCard";
-
-export const action = async (c: ActionFunctionArgs) => {
-  const formData = await c.request.formData();
-  const content = formData.get("content") as string;
-  const userId = formData.get("userId") as string;
-  // get all tags start with #
-  const tagReg = new RegExp(/(#[\p{L}\p{N}_-]+(?:\/[\p{L}\p{N}_-]+)*)/gu);
-  const tags = content.match(tagReg)?.map((tag) => tag.slice(1));
-  if (!content) {
-    throw new Response("Content is required", { status: 400 });
-  }
-  // This regular expression is used to find tag words starting with #
-  const tagMatches = content.match(tagReg) || [];
-  // Remove duplicate tags
-  const uniqueTags = [...new Set(tagMatches.map((tag) => tag.slice(1)))];
-
-  const note = await prisma.note.create({
-    data: {
-      content,
-      user: {
-        connect: {
-          id: userId,
-        },
-      },
-    },
-  });
-
-  // For each unique tag, connect or create a Tag
-  for (const title of uniqueTags) {
-    const tag = await prisma.tag.upsert({
-      where: { title },
-      create: { title },
-      update: {},
-    });
-
-    // For each Tag, create a NoteTag to establish the relationship with the Note
-    await prisma.noteTag.create({
-      data: {
-        noteId: note.id,
-        tagTitle: tag.title,
-      },
-    });
-  }
-
-  return json({ message: "Note created" });
-};
-
-export const loader = async (c: LoaderFunctionArgs) => {
-  const userInfo = await auth(c.request);
-  const userId = userInfo.userId;
-  if (!userId) {
-    return redirect("/login");
-  }
-
-  const searchParams = new URL(c.request.url).searchParams;
-  const tag = searchParams.get("tag") as string;
-  const tagConditions = tag
-    ? {
-        tags: {
-          some: {
-            tag: {
-              title: tag,
-            },
-          },
-        },
-      }
-    : {};
-
-  const notes = await prisma.$transaction([
-    prisma.note.findMany({
-      where: {
-        userId,
-        ...tagConditions,
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
-      include: {
-        tags: {
-          include: {
-            tag: true,
-          },
-        },
-      },
-    }),
-  ]);
-
-  const tagsArray = await prisma.noteTag.findMany({
-    where: {
-      note: {
-        userId: userId,
-      },
-    },
-    select: {
-      tag: true,
-    },
-    distinct: ["tagTitle"],
-  });
-
-  return json({ notes, tagsArray, userInfo, tag });
-};
+import { loader } from "./mine";
 
 export default function Page() {
   const loaderData = useLoaderData<typeof loader>();
@@ -176,7 +68,6 @@ export default function Page() {
   return (
     <div className="p-10">
       <div className="flex gap-3">
-        {/* Side bar */}
         <div className="w-1/5 mr-3">
           <div className="flex flex-row justify-between items-center py-4">
             <User
@@ -278,7 +169,6 @@ export default function Page() {
             )}
           </div>
         </div>
-        {/* note area */}
         <div className="flex-1 flex-col">
           <Form method="post" ref={formRef}>
             <div className="flex flex-col gap-3 my-3">

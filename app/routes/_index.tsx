@@ -8,7 +8,7 @@ import {
   Button,
   Image,
 } from "@nextui-org/react";
-import { AcmeLogo } from "~/AcmeLogo.jsx";
+import { Logo } from "~/components/logo";
 import { auth } from "~/session";
 import { useLoaderData } from "@remix-run/react";
 
@@ -32,7 +32,7 @@ export default function Index() {
     <div className="flex flex-col items-center">
       <Navbar>
         <NavbarBrand>
-          <AcmeLogo />
+          <Logo />
           <p className="font-bold text-inherit pl-2">TechDemo</p>
         </NavbarBrand>
         <NavbarContent className="hidden sm:flex gap-4" justify="center">

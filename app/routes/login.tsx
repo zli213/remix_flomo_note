@@ -1,7 +1,7 @@
 import { Button, Input, Image } from "@nextui-org/react";
 import { Form, redirect } from "@remix-run/react";
 
-import React, { useState } from "react";
+import { useState } from "react";
 import { TbEyeFilled } from "react-icons/tb";
 import { FaEyeSlash } from "react-icons/fa";
 import { ActionFunctionArgs, json } from "@remix-run/node";
