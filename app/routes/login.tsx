@@ -1,5 +1,5 @@
 import { Button, Input, Image } from "@nextui-org/react";
-import { Form, redirect } from "@remix-run/react";
+import { Form, redirect, useActionData } from "@remix-run/react";
 
 import { useState } from "react";
 import { TbEyeFilled } from "react-icons/tb";
@@ -12,6 +12,16 @@ export const action = async (c: ActionFunctionArgs) => {
   const formData = await c.request.formData();
   const email = formData.get("email") as string;
   const password = formData.get("password") as string;
+  // Check if password is longer than 8 characters
+  if (password.length < 8) {
+    return json({
+      success: false,
+      errors: {
+        username: "",
+        password: "Password must be at least 8 characters",
+      },
+    });
+  }
   const session = await userSessionStorage.getSession(
     c.request.headers.get("Cookie")
   );
@@ -49,7 +59,8 @@ export default function App() {
   const [isVisible, setIsVisible] = useState(false);
 
   const toggleVisibility = () => setIsVisible(!isVisible);
-
+  const actionData = useActionData<typeof action>();
+  const errors = actionData?.errors;
   return (
     <div className="flex flex-row justify-center items-center px-4 py-5 w-full min-h-screen">
       {/* Image Container */}
@@ -71,6 +82,8 @@ export default function App() {
               variant="bordered"
               placeholder="Enter your password"
               name="password"
+              isInvalid={!!errors?.password}
+              errorMessage={errors?.password}
               endContent={
                 <button
                   className="focus:outline-none"
