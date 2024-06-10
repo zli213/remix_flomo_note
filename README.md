@@ -1,8 +1,9 @@
-# Tech Demo - Technical Documentation
+# Remix flomo notes app
 
 ## Project Overview
 
-**Tech Demo** is a modern full-stack application developed using the Remix framework. This documentation serves as a comprehensive guide for developers looking to understand or contribute to the Tech Demo project. It provides a clear outline of the setup process, project structure, and necessary configurations.
+**Remix flomo notes app** is a full-stack application developed using the Remix framework. It serves as a Tech Demo project for learning and implementing the Remix framework. The goal of this project is to create a note-taking software similar to flomo(<https://flomoapp.com/>). This documentation provides a comprehensive guide for developers, covering the setup process, project structure, and necessary configurations.
+![alt text](<CleanShot 2024-06-10 at 18.38.09@2x.png>)
 
 ## Welcome to Remix + Vite!
 
